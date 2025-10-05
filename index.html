@@ -1,50 +1,338 @@
 <!DOCTYPE html>
-<!--
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勉強時間タイマー</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #444;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        #settings, #subject-select, #calendar-container {
+            margin-bottom: 20px;
+        }
+        #settings label, #subject-select label {
+            font-size: 1.2rem;
+            margin-right: 10px;
+        }
+        #settings input, #subject {
+            padding: 5px;
+            font-size: 1.1rem;
+        }
+        #timer {
+            font-size: 48px;
+            color: #ff6b6b;
+            margin-bottom: 20px;
+            transition: font-size 0.3s; /* フォントサイズ変更のアニメーション */
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            color: #fff;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .chart-container {
+            width: 70%;
+            margin-top: 30px;
+        }
+        .chart-container canvas {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        @media (max-width: 600px) {
+            #timer {
+                font-size: 36px;
+            }
+            button {
+                padding: 10px 18px;
+                font-size: 1rem;
+            }
+            .chart-container {
+                width: 90%;
+            }
+        }
+        @media (orientation: landscape) {
+            #timer {
+                font-size: 120px; /* 横向き時のタイマーのフォントサイズ */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>勉強時間タイマー</h1>
+    
+    <div id="settings">
+        <label for="study-time">勉強時間:</label>
+        <input type="number" id="study-time" value="25" min="1" max="180">
+    </div>
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    <div id="subject-select">
+        <label for="subject">教科:</label>
+        <select id="subject">
+            <option value="math">数学</option>
+            <option value="japanese">国語</option>
+            <option value="science">理科</option>
+            <option value="social">社会</option>
+            <option value="english">英語</option>
+            <option value="other">その他</option>
+        </select>
+    </div>
+    
+    <div id="timer">25:00</div>
+    
+    <button onclick="startTimer()">勉強開始</button>
+    <button onclick="pauseTimer()">一時停止</button>
+    <button onclick="resetTimer()">リセット</button>
 
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-     KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
--->
-<html>
-    <head>
-        <meta charset="utf-8">
-        <!--
-        Customize this policy to fit your own app's needs. For more guidance, please refer to the docs:
-            https://cordova.apache.org/docs/en/latest/
-        Some notes:
-            * https://ssl.gstatic.com is required only on Android and is needed for TalkBack to function properly
-            * Disables use of inline scripts in order to mitigate risk of XSS vulnerabilities. To change this:
-                * Enable inline JS: add 'unsafe-inline' to default-src
-        -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
-        <meta name="format-detection" content="telephone=no">
-        <meta name="msapplication-tap-highlight" content="no">
-        <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover">
-        <meta name="color-scheme" content="light dark">
-        <link rel="stylesheet" href="css/index.css">
-        <title>Hello World</title>
-    </head>
-    <body>
-        <div class="app">
-            <h1>Apache Cordova</h1>
-            <div id="deviceready" class="blink">
-                <p class="event listening">Connecting to Device</p>
-                <p class="event received">Device is Ready</p>
-            </div>
-        </div>
-        <script src="cordova.js"></script>
-        <script src="js/index.js"></script>
-    </body>
+    <div id="calendar-container">
+        <label for="calendar">過去の記録を見る:</label>
+        <input type="text" id="calendar">
+    </div>
+
+    <div id="selected-date-study">
+        <h3 id="selected-date-title">選択された日付: -</h3>
+        <ul id="study-details-list"></ul>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="studyChart"></canvas>
+    </div>
+    
+    <footer>© 2024 勉強時間タイマー</footer>
+    
+    <audio id="notification-sound" src="alarm.mp3" preload="auto"></audio>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        let countdown;
+        let timeLeft = 25 * 60;
+        let timerRunning = false;
+        let isPaused = false;
+        let isZero = false;
+        // 現在のタイマーセッションの初期時間を保存する変数
+        let initialTimeLeftForSession = 0;
+
+        const timerElement = document.getElementById('timer');
+        const notificationSound = document.getElementById('notification-sound');
+        const subjectSelect = document.getElementById('subject');
+        const studyTimeInput = document.getElementById('study-time');
+
+        const subjects = ['math', 'japanese', 'science', 'social', 'english', 'other'];
+        const subjectLabels = {
+            math: '数学', japanese: '国語', science: '理科',
+            social: '社会', english: '英語', other: 'その他'
+        };
+        const subjectColors = {
+            math: 'rgba(75, 192, 192, 0.6)', japanese: 'rgba(255, 99, 132, 0.6)',
+            science: 'rgba(144, 238, 144, 0.6)', social: 'rgba(255, 206, 86, 0.6)',
+            english: 'rgba(216, 191, 216, 0.6)', other: 'rgba(128, 128, 128, 0.6)'
+        };
+
+        // ローカルストレージからデータを読み込む (キーは日付文字列を使用)
+        let studyData = JSON.parse(localStorage.getItem('studyData')) || {
+            math: {}, japanese: {}, science: {}, social: {}, english: {}, other: {}
+        };
+
+        const ctx = document.getElementById('studyChart').getContext('2d');
+        const today = new Date();
+        const pastWeek = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            return date.toLocaleDateString();
+        }).reverse();
+        
+        const studyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: pastWeek,
+                datasets: subjects.map(subject => ({
+                    label: subjectLabels[subject],
+                    data: [], // 初期データは後で設定
+                    backgroundColor: subjectColors[subject]
+                }))
+            },
+            options: {
+                scales: {
+                    x: { stacked: true },
+                    y: { beginAtZero: true, stacked: true, ticks: { stepSize: 10 }}
+                }
+            }
+        });
+
+        // 勉強時間を記録し、保存・表示更新を行う関数
+        function recordStudyTime(minutes) {
+            if (minutes <= 0) return;
+
+            const subject = subjectSelect.value;
+            const dateKey = new Date().toLocaleDateString();
+
+            if (!studyData[subject][dateKey]) {
+                studyData[subject][dateKey] = 0;
+            }
+            studyData[subject][dateKey] += minutes;
+            
+            localStorage.setItem('studyData', JSON.stringify(studyData));
+            updateChart();
+            updateSelectedDateStudy(new Date());
+        }
+
+        // グラフの表示を更新する関数
+        function updateChart() {
+            subjects.forEach((subject, index) => {
+                studyChart.data.datasets[index].data = pastWeek.map(dateStr => {
+                    return studyData[subject][dateStr] || 0;
+                });
+            });
+            studyChart.update();
+        }
+
+        function startTimer() {
+            if (timerRunning || isZero) return;
+
+            if (!isPaused) {
+                let studyMinutes = parseInt(studyTimeInput.value);
+                timeLeft = studyMinutes * 60;
+                initialTimeLeftForSession = timeLeft; // セッション開始時の時間を記録
+                updateTimerDisplay();
+            }
+            
+            countdown = setInterval(timer, 1000);
+            timerRunning = true;
+            isPaused = false;
+        }
+
+        function pauseTimer() {
+            clearInterval(countdown);
+            timerRunning = false;
+            isPaused = true;
+        }
+
+        function resetTimer() {
+            clearInterval(countdown);
+            let studyMinutes = parseInt(studyTimeInput.value);
+            timeLeft = studyMinutes * 60;
+            initialTimeLeftForSession = 0;
+            updateTimerDisplay();
+            timerRunning = false;
+            isPaused = false;
+            isZero = false;
+        }
+
+        function timer() {
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                timerRunning = false;
+                notificationSound.play();
+                recordStudyTime(Math.round(initialTimeLeftForSession / 60));
+                isZero = true;
+                timerElement.textContent = "00:00";
+            } else {
+                timeLeft--;
+                updateTimerDisplay();
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // ページを離れる時に、勉強の進捗を自動で保存する
+        window.addEventListener('beforeunload', () => {
+            if (timerRunning && initialTimeLeftForSession > timeLeft) {
+                const elapsedSeconds = initialTimeLeftForSession - timeLeft;
+                const elapsedMinutes = Math.round(elapsedSeconds / 60);
+                
+                if (elapsedMinutes > 0) {
+                    const subject = subjectSelect.value;
+                    const dateKey = new Date().toLocaleDateString();
+                    if (!studyData[subject][dateKey]) {
+                        studyData[subject][dateKey] = 0;
+                    }
+                    studyData[subject][dateKey] += elapsedMinutes;
+                    localStorage.setItem('studyData', JSON.stringify(studyData));
+                }
+            }
+        });
+
+        flatpickr("#calendar", {
+            enableTime: false,
+            dateFormat: "Y-m-d",
+            defaultDate: new Date(),
+            maxDate: new Date(),
+            onChange: function(selectedDates) {
+                updateSelectedDateStudy(selectedDates[0]);
+            }
+        });
+
+        function updateSelectedDateStudy(selectedDate) {
+            const dateKey = selectedDate.toLocaleDateString();
+            const selectedDateTitle = document.getElementById('selected-date-title');
+            const studyDetailsList = document.getElementById('study-details-list');
+            
+            selectedDateTitle.textContent = `選択された日付: ${dateKey}`;
+            studyDetailsList.innerHTML = '';
+
+            let totalMinutes = 0;
+            subjects.forEach(subject => {
+                const studyMinutes = studyData[subject][dateKey] || 0;
+                if (studyMinutes > 0) {
+                    const li = document.createElement('li');
+                    li.textContent = `${subjectLabels[subject]}: ${studyMinutes} 分`;
+                    studyDetailsList.appendChild(li);
+                    totalMinutes += studyMinutes;
+                }
+            });
+
+            if (totalMinutes === 0) {
+                studyDetailsList.innerHTML = '<li>この日の勉強記録はありません。</li>';
+            }
+        }
+        
+        // ページ読み込み完了時にグラフと今日の記録を初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateChart();
+            updateSelectedDateStudy(new Date());
+        });
+
+        // タブが非アクティブになった時にタイマーを一時停止・復帰時に再開する
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && timerRunning) {
+                pauseTimer();
+            } else if (!document.hidden && isPaused) {
+                startTimer();
+            }
+        });
+    </script>
+</body>
 </html>
